@@ -1,0 +1,217 @@
+*,
+*::after,
+*::before {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    font-size: 16px;
+}
+
+html {
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+main {
+    padding: 10px;
+}
+
+.title {
+    margin: 15px 0;
+}
+
+.title h1 {
+    font-size: 32px;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+form {
+    max-width: 625px;
+    margin: 0 auto 50px auto;
+    -webkit-box-shadow: 1px 7px 18px -10px #000000;
+    box-shadow: 1px 7px 18px -10px #000000;
+    background-color: rgb(250, 250, 250);
+    border-radius: 10px;
+    padding: 10px;
+}
+
+form .description{
+    margin-bottom: 25px;
+}
+
+textarea{
+    width: 100%;
+    max-width: 100%;
+    height: 100px;
+    font-family: Arial, Helvetica, sans-serif;
+    padding: 5px;
+}
+
+select,
+input[type=text],
+input[type=number] {
+    width: 100%;
+    font-size: 16px;
+    max-width: 100%;
+    outline: none;
+    padding: 5px 10px;
+    border-radius: 0;
+    border-style: none;
+    border: 1px solid rgb(170, 170, 170);
+}
+
+select:focus,
+input:focus[type=text],
+input:focus[type=number],
+textarea:focus {
+    outline: 1px solid rgb(103, 174, 233);
+}
+
+
+form label {
+    display: inline-block;
+    padding: 5px;
+    font-size: 18px;
+    font-weight: bold;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif
+}
+
+form label i, form .description i{
+    color: rgb(253, 93, 93);
+    font-weight: normal;
+}
+
+form .label_input_flex {
+    display: flex;
+    align-items: center;
+}
+
+form .label_input_flex label {
+    min-width: 250px;
+}
+
+.lastname_firstname_container,
+.phone_email_container,
+.city_postal_code_container,
+.mutual_national_number_container,
+.school_year_study_container {
+    margin: 5px;
+    display: flex;
+    gap: 30px;
+}
+
+
+.lastname_firstname_container>div,
+.phone_email_container>div,
+.city_postal_code_container > div,
+.mutual_national_number_container > div,
+.school_year_study_container>div {
+    flex: 1;
+}
+
+.phone_container{
+    display: flex;
+    gap: 1px;
+}
+
+.birthdate_container .input{
+    display: flex;
+    gap: 2px;
+}
+
+.separator {
+    margin: 35px 0;
+    border: none;
+    border-top: 1px solid rgb(122, 122, 122);
+}
+
+.submit_container{
+    margin-top: 25px;
+    display: flex;
+}
+
+.submit_container input{
+    width: 100%;
+    border-style: none;
+    padding: 20px 5px;
+    cursor: pointer;
+    font-size: 21px;
+    color: white;
+    background-color: #289b38;
+    border-radius: 10px;
+}
+
+.submit_container input:focus, .submit_container input:hover{
+    background-color: #7db928;
+}
+
+
+.custom_select {
+    width: 85px;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.button_custom_select {
+    display: inline-flex;
+    gap: 1px;
+    align-items: center;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    width: 100%;
+    white-space: nowrap;
+    padding: 5px 15px 5px 5px;
+    background-color: #e9e9ed;
+    border: 1px solid rgb(170, 170, 170);
+    outline: none;
+    text-align: left;
+    position: relative;
+}
+
+.button_custom_select::after {
+    position: absolute;
+    content: "";
+    top: calc(50% + 3px);
+    transform: translateY(-50%);
+    right: 5px;
+    width: 0;
+    height: 0;
+    border: 6px solid transparent;
+    border-color: #3a3a3a transparent transparent transparent;
+}
+
+.options_custom_select {
+    margin: 0;
+    position: absolute;
+    top: 100%;
+    width: 100%;
+    max-height: 200px;
+    list-style: none;
+    padding: 0;
+    overflow-y: scroll;
+    border: 1px solid rgb(170, 170, 170);
+    background-color: white;
+}
+
+.options_custom_select>li {
+    padding: 5px;
+    background-color: white;
+    cursor: pointer;
+}
+
+.custom_select .flag{
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 20px;
+    height: 15px;
+    overflow: hidden;
+}
+
+.options_custom_select>li:hover,
+.options_custom_select>li.active {
+    background-color: #e9e9ed;
+}
