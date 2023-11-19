@@ -36,7 +36,7 @@ if ($lng == "en") {
             <h1><?php echo $title ?></h1>
         </div>
 
-        <form action="">
+        <form action="./post.php" method="post" id="contact_form">
             <div class="description">
                 <em>Attention, les champs précédés d'une étoile <i>(*)</i> sont obligatoires.</em>
             </div>
@@ -49,9 +49,7 @@ if ($lng == "en") {
                     </label>
                     <div>
                         <select name="forwho" id="forwho" onchange="hideunuse()">
-                            <option selected="selected" value="adult">
-                                <?php echo $varlabels[1] ?>
-                            </option>
+                            <option selected="selected" value="adult"><?php echo $varlabels[1] ?></option>
                             <option value="child"><?php echo $varlabels[2] ?></option>
                         </select>
                     </div>
@@ -124,10 +122,12 @@ if ($lng == "en") {
                         <i>(*)</i><?php echo $varlabels[8] ?>
                     </label>
                     <div class="phone_container">
+                        <input type="hidden" name="phonenumber" id="phone_number">
                         <?php //https://github.com/lipis/flag-icons/tree/main Tous les drapeaux en SVG 
                         ?>
+
                         <div class="custom_select">
-                            <input type="hidden" value="0032">
+                            <input type="hidden" value="0032" id="prefix_phone_number">
                             <button class="button_custom_select"></button>
                             <ul class="options_custom_select" style="display: none;" tabindex="-1">
                                 <li data-value="0032" title="Belgium">
@@ -238,6 +238,7 @@ if ($lng == "en") {
                         </label>
                     </div>
                     <div class="input">
+                        <input type="hidden" id="birthdate" name="birthdate">
                         <input type="number" placeholder=<?php echo $varlabels[22] ?> id="ybirthdate" name="ybirthdate" min="1920" max=<?php echo date("Y") ?>>
                         <input type="number" placeholder="MM" id="mbirthdate" name="mbirthdate" min="1" max="12">
                         <input type="number" placeholder=<?php echo $varlabels[23] ?> id="dbirthdate" name="dbirthdate" min="1" max="31">
@@ -250,7 +251,7 @@ if ($lng == "en") {
 
             <section>
                 <div class="mutual_national_number_container">
-                    <div>
+                    <div class="align_end">
                         <div>
                             <label for="mut">
                                 <i>(*)</i><?php echo $varlabels[21] ?>
@@ -263,7 +264,10 @@ if ($lng == "en") {
                     <div>
                         <div>
                             <label for="natnumber">
-                                <i>(*)</i>Numéro national :
+                                <div>
+                                    <i>(*)</i>Numéro national :
+                                </div>
+                                <div><em>(ou équivalent)</em></div>
                             </label>
                         </div>
                         <div>
@@ -380,6 +384,21 @@ if ($lng == "en") {
             document.getElementById('n9').style.display = "";
         }
     }
+
+    const CONTACT_FORM = document.getElementById("contact_form");
+    const PHONE_NUMBER = document.getElementById("phone_number");
+    const BIRTHDATE = document.getElementById("birthdate");
+
+    CONTACT_FORM.addEventListener("submit", (e) => {
+        e.preventDefault();
+        let yearBirthDate = document.getElementById("ybirthdate").value;
+        let monthBirthDate = parseInt(document.getElementById("mbirthdate").value);
+        let dayBirthDate = parseInt(document.getElementById("dbirthdate").value);
+
+        PHONE_NUMBER.value = document.getElementById("prefix_phone_number").value + document.getElementById("tel").value;
+        BIRTHDATE.value = yearBirthDate + "/" + (monthBirthDate < 10 ? "0" + monthBirthDate.toString() : monthBirthDate.toString()) + "/" + (dayBirthDate < 10 ? "0" + dayBirthDate.toString() : dayBirthDate.toString());
+        CONTACT_FORM.submit();
+    });
 
     class CustomSelect {
         constructor(customSelect) {

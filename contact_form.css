@@ -112,6 +112,15 @@ form .label_input_flex label {
     flex: 1;
 }
 
+.mutual_national_number_container .align_end{
+    align-self: flex-end;
+}
+
+.mutual_national_number_container em {
+    font-size: 14px;
+    font-weight: 100;
+}
+
 .phone_container{
     display: flex;
     gap: 1px;
@@ -197,9 +206,10 @@ form .label_input_flex label {
 }
 
 .options_custom_select>li {
-    padding: 5px;
+    padding: 5px 3px;
     background-color: white;
     cursor: pointer;
+    font-size: 12px;
 }
 
 .custom_select .flag{
