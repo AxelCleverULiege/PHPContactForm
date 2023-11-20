@@ -2,17 +2,12 @@
 
 namespace App\Validation\Rules\Parent;
 
-/**
- * @method void __construct(string $input)
- * @method void __construct(string $input, callable $callback)
- */
+
 abstract class AbstractRuleDependentAnotherInput extends AbstractRule{
 
     protected mixed $callback;
     private string $input;
     private mixed $valueFromAnotherInput;
-    private bool $isRequired = false;
-    private bool $needsToBeExcluded = false;
     private bool $isKey = false;
 
     public function __construct(string $input, callable $callback = null)
@@ -32,22 +27,6 @@ abstract class AbstractRuleDependentAnotherInput extends AbstractRule{
 
     public function getValueFromAnotherInput(){
         return $this->valueFromAnotherInput ?? "";
-    }
-
-    protected function setIsRequired(bool $isRequired){
-        $this->isRequired = $isRequired;
-    }
-
-    public function getIsRequired(){
-        return $this->isRequired;
-    }
-
-    protected function setNeedsToBeExcluded(bool $needsToBeExcluded){
-        $this->needsToBeExcluded = $needsToBeExcluded;
-    }
-
-    public function getNeedsToBeExcluded(){
-        return $this->needsToBeExcluded;
     }
 
     /**

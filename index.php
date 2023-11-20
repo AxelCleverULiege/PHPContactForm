@@ -117,12 +117,12 @@ if ($lng == "en") {
 
 
             <section class="phone_email_container">
+                <input type="hidden" name="phone_number" id="phone_number">
                 <div>
                     <label for="tel">
                         <i>(*)</i><?php echo $varlabels[8] ?>
                     </label>
                     <div class="phone_container">
-                        <input type="hidden" name="phonenumber" id="phone_number">
                         <?php //https://github.com/lipis/flag-icons/tree/main Tous les drapeaux en SVG 
                         ?>
 
@@ -387,6 +387,8 @@ if ($lng == "en") {
 
     const CONTACT_FORM = document.getElementById("contact_form");
     const PHONE_NUMBER = document.getElementById("phone_number");
+    const SUFFIX_PHONE_NUMBER = document.getElementById("tel");
+    const PREFIX_PHONE_NUMBER = document.getElementById("prefix_phone_number");
     const BIRTHDATE = document.getElementById("birthdate");
 
     CONTACT_FORM.addEventListener("submit", (e) => {
@@ -395,8 +397,15 @@ if ($lng == "en") {
         let monthBirthDate = parseInt(document.getElementById("mbirthdate").value);
         let dayBirthDate = parseInt(document.getElementById("dbirthdate").value);
 
-        PHONE_NUMBER.value = document.getElementById("prefix_phone_number").value + document.getElementById("tel").value;
-        BIRTHDATE.value = yearBirthDate + "/" + (monthBirthDate < 10 ? "0" + monthBirthDate.toString() : monthBirthDate.toString()) + "/" + (dayBirthDate < 10 ? "0" + dayBirthDate.toString() : dayBirthDate.toString());
+        monthBirthDate = isNaN(monthBirthDate) ? 0 : monthBirthDate;
+        dayBirthDate = isNaN(dayBirthDate) ? 0 : dayBirthDate;
+
+        if(yearBirthDate.trim() == "" && monthBirthDate == 0 && dayBirthDate == 0){
+            BIRTHDATE.value = "";
+        }else{
+            BIRTHDATE.value = yearBirthDate + "/" + (monthBirthDate < 10 ? "0" + monthBirthDate.toString() : monthBirthDate.toString()) + "/" + (dayBirthDate < 10 ? "0" + dayBirthDate.toString() : dayBirthDate.toString());
+        }
+        PHONE_NUMBER.value = SUFFIX_PHONE_NUMBER.value.trim() == "" ? "" : PREFIX_PHONE_NUMBER.value + PHONE_NUMBER.value.trim();
         CONTACT_FORM.submit();
     });
 
@@ -422,9 +431,6 @@ if ($lng == "en") {
                 } else {
                     this.containerOptionsCustomSelect.style.display = "none";
                 }
-                // this.options[this.currentSelected].scrollIntoView({
-                //     block: "end"
-                // });
             });
 
             this.options.forEach((option, index) => {

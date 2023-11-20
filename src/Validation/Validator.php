@@ -4,10 +4,12 @@ namespace App\Validation;
 
 use LogicException;
 use App\Helper\ValueHelper;
+use App\Validation\Rules\ExcludeIfRule;
 use App\Validation\Rules\NullableRule;
 use App\Validation\Rules\RequiredRule;
 use App\Validation\Rules\Parent\AbstractRule;
 use App\Validation\Rules\Parent\AbstractRuleDependentAnotherInput;
+use App\Validation\Rules\RequiredIfRule;
 
 class Validator
 {
@@ -16,7 +18,9 @@ class Validator
      */
     private array $validationRulesWithKey;
     private array $data;
-
+    private ?array $placeHolders;
+    private ?string $redirectURL;
+    private bool $redirectOnFail;
     private array $errorValidationMessages = [];
     private array $validatedData = [];
     private mixed $validValue = null;
@@ -25,13 +29,18 @@ class Validator
     private bool $canBeNullable = false;
     private bool $needsToBeExcluded = false;
 
+    private bool $shouldIgnoreOtherRules = false;
+
     /**
      * @param \App\Validation\Rules\Parent\AbstractRule[][] $validationRulesWithKey
      */
-    public function __construct(array $validationRulesWithKey, array $data)
+    public function __construct(array $validationRulesWithKey, array $data, array $placeHolders = null, string $redirectURL = null, bool $redirectOnFail = false)
     {
         $this->validationRulesWithKey = $validationRulesWithKey;
         $this->data = $data;
+        $this->placeHolders = $placeHolders;
+        $this->redirectURL = $redirectURL;
+        $this->redirectOnFail = $redirectOnFail;
     }
 
     public function validate()
@@ -39,11 +48,42 @@ class Validator
         $this->setAllValuesAndKeys();
 
         foreach ($this->validationRulesWithKey as $key => $validationRules) {
+            $this->shouldIgnoreOtherRules = false;
+            $this->validValue = null;
+            $this->needsToBeExcluded = false;
+
+            usort($validationRules, function (AbstractRule $a, AbstractRule $b) {
+                return $a->getPriority() - $b->getPriority();
+            });
+
             $this->testForNullableRuleAndRequiredRuleInSameList($validationRules);
             $this->executeValidationRules($validationRules, $key);
         }
 
+        $this->tryToRedirectOnFail();
+
         return !$this->didValidationFailed;
+    }
+
+    private function tryToRedirectOnFail()
+    {
+        if ($this->redirectURL != null) {
+            setcookie("error_messages", json_encode([
+                "uri" => parse_url($this->redirectURL)["path"],
+                "messages" => $this->getErrorValidationMessages()
+            ], JSON_UNESCAPED_UNICODE), [
+                "expires" => time() + 3600,
+                "path" => "/",
+                "secure" => true,
+                "httponly" => true,
+                "samesite" => 'strict',
+            ]);
+
+            if ($this->redirectOnFail) {
+                header("Location :" . $this->redirectURL, response_code: 303);
+                exit;
+            }
+        }
     }
 
     public function getValidatedData()
@@ -61,7 +101,7 @@ class Validator
     private function setErrorMessage(string $key, string $message)
     {
         $this->didValidationFailed = true;
-        
+
         if (isset($this->errorValidationMessages[$key])) {
             array_push($this->errorValidationMessages[$key], $message);
         } else {
@@ -74,18 +114,14 @@ class Validator
      */
     private function executeValidationRules(array &$validationRules, string $key)
     {
-        $this->validValue = null;
-        $this->needsToBeExcluded = false;
-
         foreach ($validationRules as $validationRule) {
             if ($validationRule instanceof AbstractRuleDependentAnotherInput) {
                 $this->dependentFromAnotherInput($validationRule, $key);
             } else {
                 $this->notDependentFromAnotherInput($validationRule, $key);
-
             }
         }
-        
+
         if ($this->didValidationFailed == false && $this->needsToBeExcluded == false) {
             if (ValueHelper::isEmpty($this->validValue)) {
                 $this->validatedData[$key] = null;
@@ -100,15 +136,16 @@ class Validator
         //ternaire pour savoir si clé d'un tableau assoc ou une valeur
         $valueFromAnotherInput = $validationRule->getIsKey() ? $this->data[$validationRule->getInput()] : $validationRule->getInput();
         $validationRule->setValueFromAnotherInput($valueFromAnotherInput);
-
         if ($validationRule->isRuleValid() == false) {
-            //Si une valeur est Requise (Ex RequiredIfRule) mais que la valeur est vide, la validation a raté.
-            if (($validationRule->getIsRequired() && ValueHelper::isEmpty($validationRule->getValue()))) {
-                $this->setErrorMessage($key, $validationRule->getMessage());
+
+            if (!($validationRule instanceof RequiredIfRule && $this->checkIfNeedToBeRequiredDynamically($validationRule) || $validationRule instanceof ExcludeIfRule)) {
+                $message = $this->replacePlaceHolder($key, $validationRule->getMessage(), $validationRule->getPlaceHolder());
+
+                if ($validationRule->getIsKey())
+                    $message = $this->replacePlaceHolder($validationRule->getInput(), $message, $validationRule->getPlaceHolder($validationRule->getInput()));
+
+                $this->setErrorMessage($key, $message);
             }
-            else if (ValueHelper::isEmpty($validationRule->getValue()) == false && $validationRule->getIsRequired() == false) {
-                $this->setErrorMessage($key, $validationRule->getMessage());
-            } 
         } else {
             //une des règles a été validée on sauvegarde la valeur.
             //Si une valeur n'a pas encore été assignée ou si c'est la règle a également pour rôle de cast la valeur on assigne à validValue
@@ -116,8 +153,7 @@ class Validator
                 $this->validValue = $validationRule->getValue($validationRule->getShouldCastValue());
             }
 
-            //Si a besoin d'être exclu via ExcludeIfRule ou une autre règle
-            if ($validationRule->getNeedsToBeExcluded()) {
+            if ($validationRule instanceof ExcludeIfRule) {
                 $this->needsToBeExcluded = true;
             }
         }
@@ -129,12 +165,14 @@ class Validator
     {
         //la règle n'est pas valide
         if ($validationRule->isRuleValid() == false) {
-            //si une règle dit que ça peut être NULL mais qu'il y a un input (ou que ça ne peut tout simplement ne pas être NULL), 
-            //je considère que la règle a été enfreinte et que la validation pour cette règle a raté. 
-            if (($this->canBeNullable && ValueHelper::isEmpty($validationRule->getValue()) == false) || $this->canBeNullable == false) {
-                $this->didValidationFailed = true;
-                $this->setErrorMessage($key, $validationRule->getMessage());
-            } 
+
+            if (!$this->shouldIgnoreOtherRules) {
+                //si une règle dit que ça peut être NULL mais qu'il y a un input (ou que ça ne peut tout simplement ne pas être NULL), 
+                //je considère que la règle a été enfreinte et que la validation pour cette règle a raté.
+                if (($this->canBeNullable && ValueHelper::isEmpty($validationRule->getValue()) == false) || $this->canBeNullable == false) {
+                    $this->setErrorMessage($key, $this->replacePlaceHolder($key, $validationRule->getMessage(), $validationRule->getPlaceHolder()));
+                }
+            }
         } else {
             //une des règles a été validée on sauvegarde la valeur.
             //Si une valeur n'a pas encore été assignée ou si c'est la règle a également pour rôle de cast la valeur on assigne à validValue
@@ -158,6 +196,26 @@ class Validator
         }
     }
 
+    private function replacePlaceHolder(string $key, string $message, string $placeholder)
+    {
+        if (isset($this->placeHolders[$key])) {
+            $message = str_replace($placeholder, $this->placeHolders[$key], $message);
+        }
+
+        return $message;
+    }
+
+    private function checkIfNeedToBeRequiredDynamically(RequiredIfRule $rule)
+    {
+        if ($rule->getIsRequired()) {
+            $this->canBeNullable = false;
+            return false;
+        } else {
+            $this->shouldIgnoreOtherRules = true;
+            return true;
+        }
+    }
+
     /**
      * @param \App\Validation\Rules\Parent\AbstractRule[] $validationRules
      * @throws LogicException if NullableRule and RequiredRule in same array
@@ -166,26 +224,36 @@ class Validator
     {
         $isRequired = false;
         $isNullable = false;
+        $isRequirefIf = false;
 
         foreach ($validationRules as $validationRule) {
             if ($validationRule instanceof NullableRule)
                 $isNullable = true;
             else if ($validationRule instanceof RequiredRule)
                 $isRequired = true;
+            else if ($validationRule instanceof RequiredIfRule)
+                $isRequirefIf = true;
+
 
             $this->canBeNullable = $isNullable;
 
             if ($isRequired && $isNullable) {
                 throw new LogicException("You can't have a NullableRule and a RequiredRule in the same list of rules.");
             }
+
+            if ($isRequired && $isRequirefIf) {
+                throw new LogicException("You can't have a RequiredIfRule and a RequiredRule in the same list of rules.");
+            }
         }
 
-        if($isRequired == false && $isNullable == false){
+        //sera par défaut à NullableRule si RequiredRule ou NullableRule n'est pas précisé.
+        if ($isRequired == false && $isNullable == false) {
             $this->canBeNullable = true;
         }
     }
 
-    public static function rawDisplay(Validator $validator){
+    public static function rawDisplay(Validator $validator)
+    {
         if ($validator->validate()) {
             echo "VALIDE <br>";
             echo "<pre>";
@@ -196,6 +264,49 @@ class Validator
             echo "<pre>";
             var_dump($validator->getErrorValidationMessages());
             echo "</pre>";
+        }
+    }
+
+    public static function displayErrorMessages(string $key = null)
+    {
+        if (!isset($_COOKIE["error_messages"])) {
+            return;
+        }
+
+        $errorMessagesWithUri = json_decode($_COOKIE["error_messages"], true);
+        setcookie("error_messages", "", [
+            "expires" => time() - 3600,
+            "path" => "/",
+            "secure" => true,
+            "httponly" => true,
+            "samesite" => 'strict',
+        ]);
+
+        $uri = $errorMessagesWithUri["uri"] ?? null;
+        $errorMessages = $errorMessagesWithUri["messages"] ?? null;
+
+        if ($uri != $_SERVER['REQUEST_URI'] || empty($errorMessages)) {
+            return;
+        }
+
+        //montre toutes les erreurs dans une liste
+        if ($key == null) {
+            echo "<ul>";
+            foreach ($errorMessages as $messages) {
+                foreach ($messages as $message) {
+                    echo "<li>" . $message . "</li>";
+                }
+            }
+            echo "</ul>";
+            return;
+        }
+
+        if(isset($errorMessages[$key])){
+            echo "<ul>";
+            foreach ($errorMessages[$key] as $message) {
+                echo "<li>" . $message . "</li>";
+            }
+            echo "</ul>";
         }
     }
 }
